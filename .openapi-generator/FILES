@@ -1,0 +1,13 @@
+.openapi-generator-ignore
+README.md
+pom.xml
+src/main/java/org/openapitools/api/ApiUtil.java
+src/main/java/org/openapitools/api/HabitsApi.java
+src/main/java/org/openapitools/configuration/EnumConverterConfiguration.java
+src/main/java/org/openapitools/model/Error.java
+src/main/java/org/openapitools/model/Frequency.java
+src/main/java/org/openapitools/model/Habit.java
+src/main/java/org/openapitools/model/HabitCreate.java
+src/main/java/org/openapitools/model/HabitPage.java
+src/main/java/org/openapitools/model/HabitStatus.java
+src/main/java/org/openapitools/model/HabitUpdate.java

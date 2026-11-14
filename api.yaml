@@ -1,0 +1,231 @@
+openapi: 3.0.3
+info:
+  title: Habit Tracker API
+  description: API трекера привычек, чтобы пользователь вёл свои привычки и не терял их между устройствами.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+tags:
+  - name: Habits
+    description: Привычки текущего пользователя
+
+security:
+  - bearerAuth: []
+
+paths:
+  /habits:
+    get:
+      tags: [Habits]
+      operationId: listHabits
+      summary: Список привычек текущего пользователя
+      parameters:
+        - name: status
+          in: query
+          description: Фильтр по статусу. Без параметра возвращаются все.
+          schema: { $ref: '#/components/schemas/HabitStatus' }
+        - name: page
+          in: query
+          description: Номер страницы, с нуля
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          description: Размер страницы
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Страница привычек
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HabitPage' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Habits]
+      operationId: createHabit
+      summary: Создать привычку
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HabitCreate' }
+      responses:
+        '201':
+          description: Привычка создана
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Habit' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Привычка с таким названием у пользователя уже есть
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                status: 409
+                code: HABIT_ALREADY_EXISTS
+                message: 'Привычка с таким названием уже есть'
+
+  /habits/{habitId}:
+    parameters:
+      - name: habitId
+        in: path
+        required: true
+        description: Идентификатор привычки
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Habits]
+      operationId: getHabit
+      summary: Получить привычку по id
+      responses:
+        '200':
+          description: Привычка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Habit' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Habits]
+      operationId: updateHabit
+      summary: Полностью обновить привычку
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HabitUpdate' }
+      responses:
+        '200':
+          description: Привычка обновлена
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Habit' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Habits]
+      operationId: deleteHabit
+      summary: Удалить привычку
+      responses:
+        '204':
+          description: Привычка удалена
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: '400 - тело или параметры не прошли валидацию (пустое имя, size > 100 и т.п.)'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            status: 400
+            code: VALIDATION_ERROR
+            message: 'Поле name не может быть пустым'
+    Unauthorized:
+      description: '401 - "не знаю, кто ты": токен не передан, просрочен или невалиден'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            status: 401
+            code: UNAUTHORIZED
+            message: 'Токен не передан или невалиден'
+    Forbidden:
+      description: '403 - "знаю, кто ты, но нельзя": привычка существует, но принадлежит другому пользователю'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            status: 403
+            code: FORBIDDEN
+            message: 'Привычка принадлежит другому пользователю'
+    NotFound:
+      description: '404 - привычки с таким id не существует'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            status: 404
+            code: HABIT_NOT_FOUND
+            message: 'Привычка не найдена'
+
+  schemas:
+    Frequency:
+      type: string
+      enum: [DAILY, WEEKLY]
+    HabitStatus:
+      type: string
+      enum: [ACTIVE, ARCHIVED]
+
+    HabitCreate:
+      type: object
+      required: [name, frequency]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100, example: Зарядка }
+        description: { type: string, maxLength: 500, example: 15 минут утром }
+        frequency: { $ref: '#/components/schemas/Frequency' }
+
+    HabitUpdate:
+      type: object
+      required: [name, frequency, status]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string, maxLength: 500 }
+        frequency: { $ref: '#/components/schemas/Frequency' }
+        status: { $ref: '#/components/schemas/HabitStatus' }
+
+    Habit:
+      type: object
+      required: [id, name, frequency, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        frequency: { $ref: '#/components/schemas/Frequency' }
+        status: { $ref: '#/components/schemas/HabitStatus' }
+        createdAt: { type: string, format: date-time }
+
+    HabitPage:
+      type: object
+      required: [items, page, size, totalElements]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Habit' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+
+    Error:
+      type: object
+      required: [status, code, message]
+      properties:
+        status: { type: integer }
+        code: { type: string }
+        message: { type: string }
