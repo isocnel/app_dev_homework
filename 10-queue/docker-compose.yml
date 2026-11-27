@@ -1,0 +1,38 @@
+name: student-job-queue
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: app
+      RABBITMQ_DEFAULT_PASS: app_secret
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+    restart: unless-stopped
+
+  service-a:
+    build: ./service_a
+    environment:
+      RABBITMQ_URL: amqp://app:app_secret@rabbitmq:5672/%2F
+    ports:
+      - "8000:8000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  service-b:
+    build: ./service_b
+    environment:
+      RABBITMQ_URL: amqp://app:app_secret@rabbitmq:5672/%2F
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
